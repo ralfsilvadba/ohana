@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1
 
 # Install dependencies
 WORKDIR /app
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
