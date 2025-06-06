@@ -8,11 +8,11 @@ app = Flask(__name__)
 # Database configuration for Railway MySQL
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
-    host = os.getenv("MYSQLHOST", "localhost")
+    host = os.getenv("MYSQLHOST", "yamanote.proxy.rlwy.net")
     user = os.getenv("MYSQLUSER", "root")
-    password = os.getenv("MYSQLPASSWORD", "")
-    database = os.getenv("MYSQLDATABASE", "test")
-    port = os.getenv("MYSQLPORT", "3306")
+    password = os.getenv("MYSQLPASSWORD", "cRFNWktnAlhiclEOGblQbsOIbFGGQzCe")
+    database = os.getenv("MYSQLDATABASE", "railway")
+    port = os.getenv("MYSQLPORT", "23346")
     db_url = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
