@@ -7,6 +7,8 @@ services:
     ports:
       - "1521:1521"
     restart: unless-stopped
+    networks:
+      - monitoring-network
 
   # ===== ORACLE DB EXPORTER =====
   oracle_exporter:
@@ -14,12 +16,14 @@ services:
     environment:
       DB_USERNAME: "pdbadmin"
       DB_PASSWORD: "Welcome12345"
-      DB_CONNECT_STRING: "free23ai:1521/freepdb"
+      DB_CONNECT_STRING: "free23ai:1521/FREEPDB1"
     ports:
       - "9161:9161"
     depends_on:
       - free23ai
     restart: unless-stopped
+    networks:
+      - monitoring-network
 
   # ===== GRAFANA MIMIR (single-binary para testes) =====
   mimir:
@@ -31,11 +35,13 @@ services:
     ports:
       - "9009:9009"
     restart: unless-stopped
+    networks:
+      - monitoring-network
 
   # ===== GRAFANA ALLOY =====
   alloy:
     image: grafana/alloy:latest
-    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy"]
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy", "/etc/alloy/config.alloy"]
     volumes:
       - ./alloy.hcl:/etc/alloy/config.alloy:ro
       - alloy-data:/var/lib/alloy
@@ -48,6 +54,8 @@ services:
       - oracle_exporter
       - mimir
     restart: unless-stopped
+    networks:
+      - monitoring-network
 
   # ===== GRAFANA =====
   grafana:
@@ -63,7 +71,13 @@ services:
     depends_on:
       - mimir
     restart: unless-stopped
+    networks:
+      - monitoring-network
 
 volumes:
   mimir-data:
   alloy-data:
+
+networks:
+  monitoring-network:
+    driver: bridge

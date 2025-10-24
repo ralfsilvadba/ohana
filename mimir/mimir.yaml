@@ -1,66 +1,43 @@
-server:
-  http_listen_port: 9009
-
-common:
-  path_prefix: /data
-  storage:
-    backend: filesystem
-    filesystem:
-      dir: /data/storage
+# NÃO use em produção; apenas demo local.
+multitenancy_enabled: false
 
 blocks_storage:
   backend: filesystem
-  tsdb:
-    dir: /data/tsdb
   bucket_store:
     sync_dir: /data/tsdb-sync
+  filesystem:
+    dir: /data/data/tsdb
+  tsdb:
+    dir: /data/tsdb
 
 compactor:
-  working_directory: /data/compactor
+  data_dir: /data/compactor
   sharding_ring:
     kvstore:
-      store: inmemory
+      store: memberlist
 
 distributor:
   ring:
+    instance_addr: 127.0.0.1
     kvstore:
-      store: inmemory
+      store: memberlist
 
 ingester:
-  lifecycler:
-    ring:
-      replication_factor: 1
-      kvstore:
-        store: inmemory
-  wal:
-    enabled: true
-    dir: /data/ingester-wal
-
-ruler:
-  rule_path: /data/rules
-  alertmanager_url: http://localhost:9093   # não temos Alertmanager aqui; ignorado
-  enable_alertmanager_v2: true
   ring:
+    instance_addr: 127.0.0.1
     kvstore:
-      store: inmemory
+      store: memberlist
+    replication_factor: 1
 
-query_frontend:
-  max_outstanding_per_tenant: 1024
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/rules
 
-querier:
-  query_store_after: 0s
+server:
+  http_listen_port: 9009
+  log_level: error
 
 store_gateway:
-  sharding_enabled: false
-
-limits:
-  ingestion_rate: 1000000
-  ingestion_burst_size: 2000000
-  max_global_series_per_user: 0
-  max_series_per_metric: 0
-
-frontend_worker:
-  frontend_address: 127.0.0.1:9095
-
-memberlist:
-  join_members: [
+  sharding_ring:
+    replication_factor: 1
