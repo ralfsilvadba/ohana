@@ -26,7 +26,7 @@ services:
     image: grafana/mimir:latest
     command: ["-config.file=/etc/mimir/mimir.yaml"]
     volumes:
-      - ./mimir.yaml:/etc/mimir/mimir.yaml:ro
+      - ./mimir:/etc/mimir:ro
       - mimir-data:/data
     ports:
       - "9009:9009"
