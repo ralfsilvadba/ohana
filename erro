@@ -1,0 +1,7 @@
+C:\Users\maria\OneDrive\Documents\ohana>docker-compose up -d
+time="2025-10-24T16:04:16-03:00" level=warning msg="C:\\Users\\maria\\OneDrive\\Documents\\ohana\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+[+] Running 2/3
+ ✔ Container ohana-free23ai-1         Running                                                                                                          0.0s
+ - Container ohana-mimir-1            Starting                                                                                                         0.6s
+ ✔ Container ohana-oracle_exporter-1  Started                                                                                                          0.6s
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "/run/desktop/mnt/host/c/Users/maria/OneDrive/Documents/ohana/mimir.yaml" to rootfs at "/etc/mimir/mimir.yaml": mount src=/run/desktop/mnt/host/c/Users/maria/OneDrive/Documents/ohana/mimir.yaml, dst=/etc/mimir/mimir.yaml, dstFd=/proc/thread-self/fd/8, flags=0x5000: not a directory: unknown: Are you trying to mount a directory onto a file (or vice-versa)? Check if the specified host path exists and is the expected type
