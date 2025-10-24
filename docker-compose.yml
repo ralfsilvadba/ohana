@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  # ===== ORACLE DB EXPORTER =====
+  oracle_exporter:
+    image: container-registry.oracle.com/database/observability-exporter:2.1.0
+    environment:
+      DB_USERNAME=pdbadmin \
+      DB_PASSWORD=Welcome12345 \
+      DB_CONNECT_STRING=free23ai:1521/freepdb \
+    ports:
+      - "9161:9161"
+    restart: unless-stopped
+	
+  # ===== ORACLE DB =====
+  free23ai:
+    image: gvenzl/oracle-free:23.9-slim-faststart
+    environment:
+      DB_PASSWORD=Welcome12345
+    ports:
+      - "1521:1521"
+
+  # ===== GRAFANA ALLOY =====
+  alloy:
+    image: grafana/alloy:latest
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy"]
+    volumes:
+      - ./alloy.hcl:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy
+    environment:
+      TENANT_ID: "tenant-local"
+      RW_URL: "http://mimir:9009/api/v1/push"
+    ports:
+      - "12345:12345"
+    depends_on:
+      - oracle_exporter
+      - mimir
+    restart: unless-stopped
+
+  # ===== GRAFANA MIMIR (single-binary para testes) =====
+  mimir:
+    image: grafana/mimir:latest
+    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    volumes:
+      - ./mimir.yaml:/etc/mimir/mimir.yaml:ro
+      - mimir-data:/data
+    ports:
+      - "9009:9009"
+    restart: unless-stopped
+
+  # ===== GRAFANA =====
+  grafana:
+    image: grafana/grafana-oss:latest
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - mimir
+    restart: unless-stopped
+
+volumes:
+  mimir-data:
+  alloy-data:
