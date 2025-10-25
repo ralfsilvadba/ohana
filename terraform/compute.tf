@@ -59,29 +59,39 @@ resource "aws_instance" "ohana_ec2" {
   }
 
   # User data: instala Docker + Compose e prepara /opt/ohana
-  user_data = <<-EOF
+    user_data = <<-EOF
     #!/bin/bash
     set -eux
 
-  # Atualiza pacotes
-    dnf -y update || true
+    exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
-  # Instala Docker Engine
-    dnf -y install docker
-    systemctl enable --now docker
+    echo "[INFO] Atualizando pacotes..."
+    until dnf -y update; do echo "retrying update..."; sleep 5; done
+
+    echo "[INFO] Instalando Docker..."
+    until dnf -y install docker; do echo "retrying docker install..."; sleep 5; done
+
+    echo "[INFO] Habilitando Docker..."
+    systemctl enable docker
+    systemctl start docker
     usermod -aG docker ec2-user
 
-  # Instala Compose v2
+    echo "[INFO] Instalando Docker Compose plugin..."
     dnf -y install docker-compose-plugin || true
-    if ! command -v docker-compose &> /dev/null; then
+
+    if ! command -v docker-compose &>/dev/null; then
+      echo "[INFO] Instalando docker-compose manualmente..."
       curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
       chmod +x /usr/local/bin/docker-compose
     fi
 
-    # Pasta do projeto
+    echo "[INFO] Criando diretórios da aplicação..."
     mkdir -p /opt/ohana/{provisioning,datasources,mimir,oracle-data,minio-data,alloy-data,mimir-data}
     chown -R ec2-user:ec2-user /opt/ohana
+
+    echo "[INFO] Finalizado. Docker e Compose instalados com sucesso!"
   EOF
+
 
   tags = {
     Name = "${var.name_prefix}-ec2"
