@@ -6,7 +6,6 @@ usage_stats:
 server:
   http_listen_port: 9009
 
-# Storage (MinIO/S3)
 blocks_storage:
   backend: s3
   s3:
@@ -20,51 +19,24 @@ blocks_storage:
   tsdb:
     dir: /data/tsdb
 
-# Gossip/rings (todos os componentes)
-memberlist:
-  join_members:
-    - mimir-distributor
-    - mimir-ingester-1
-    - mimir-ingester-2
-    - mimir-store-gateway
-    - mimir-compactor
-    - mimir-querier
-    - mimir-query-frontend
-    - mimir-query-scheduler
-    - mimir-ruler
-  abort_if_cluster_join_fails: false
-  dead_node_reclaim_time: 30m
-
-distributor:
-  ring:
-    kvstore:
-      store: memberlist
-
-ingester:
-  ring:
-    replication_factor: 2
-    kvstore:
-      store: memberlist
-
-store_gateway:
-  sharding_enabled: true
-  sharding_ring:
-    kvstore:
-      store: memberlist
-
 compactor:
   data_dir: /data/compactor
   sharding_ring:
     kvstore:
       store: memberlist
 
-# Ruler (aponta Alertmanager quando tiver)
-ruler:
-  rule_path: /data/rules
+distributor:
   ring:
+    instance_addr: 127.0.0.1
     kvstore:
       store: memberlist
-  # alertmanager_url: http://alertmanager:9093
+
+ingester:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: memberlist
+    replication_factor: 1
 
 ruler_storage:
   backend: s3
@@ -75,15 +47,9 @@ ruler_storage:
     secret_access_key: admin12345
     insecure: true
 
-# Pipeline de leitura com agendador + frontend
-query_scheduler:
-  ring:
-    kvstore:
-      store: memberlist
-
-query_frontend:
-  downstream_url: http://mimir-querier:9009
-  scheduler_address: mimir-query-scheduler:9009
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
 
 limits:
   ingestion_rate: 1000000
