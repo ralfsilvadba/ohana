@@ -3,12 +3,11 @@ services:
   free23ai:
     image: gvenzl/oracle-free:23.9-slim-faststart
     environment:
-      ORACLE_PASSWORD: "Welcome12345"   # para o gvenzl/oracle-free use ORACLE_PASSWORD
+      ORACLE_PASSWORD: "Welcome12345"
     ports:
       - "1521:1521"
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
   # ===== ORACLE DB EXPORTER =====
   oracle_exporter:
@@ -19,13 +18,11 @@ services:
       DB_CONNECT_STRING: "free23ai:1521/FREEPDB1"
     ports:
       - "9161:9161"
-    depends_on:
-      - free23ai
+    depends_on: [ free23ai ]
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
-  # ===== MINIO (Servidor S3 compatível) =====
+  # ===== MINIO (S3 compatível) =====
   minio:
     image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
@@ -38,42 +35,141 @@ services:
     volumes:
       - minio-data:/data
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
-  # ===== MINIO INIT (cria buckets 1x) =====
+  # ===== MINIO INIT (cria buckets uma única vez) =====
   minio-init:
     image: minio/mc:latest
-    depends_on:
-      - minio
+    depends_on: [ minio ]
     entrypoint: >
       /bin/sh -c "
-      echo 'aguardando MinIO...' &&
+      echo 'Aguardando MinIO...' &&
       until (mc alias set local http://minio:9000 admin admin12345) do sleep 2; done &&
-      echo 'criando buckets...' &&
+      echo 'Criando buckets...' &&
       mc mb --ignore-existing local/mimir-data &&
       mc mb --ignore-existing local/mimir-rules &&
-      echo 'buckets criados'
+      echo 'Buckets prontos.'
       "
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
-  # ===== GRAFANA MIMIR (single-binary para testes) =====
-  mimir:
+  # ====== MIMIR (microserviços) ======
+  # Use o MESMO arquivo de config para todos (montado em /etc/mimir/mimir.yaml)
+
+  mimir-distributor:
     image: grafana/mimir:latest
-    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    command:
+      - "-target=distributor"
+      - "-config.file=/etc/mimir/mimir.yaml"
     volumes:
       - ./mimir:/etc/mimir:ro
       - mimir-data:/data
+    depends_on: [ minio, minio-init ]
+    # Porta opcional para teste (ingest externa). Alloy usa nome DNS interno.
     ports:
       - "9009:9009"
-    depends_on:
-      - minio
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
-  # ===== GRAFANA ALLOY =====
+  mimir-ingester-1:
+    image: grafana/mimir:latest
+    command:
+      - "-target=ingester"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - ingester-wal-1:/data/ingester-wal
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-ingester-2:
+    image: grafana/mimir:latest
+    command:
+      - "-target=ingester"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - ingester-wal-2:/data/ingester-wal
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-store-gateway:
+    image: grafana/mimir:latest
+    command:
+      - "-target=store-gateway"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - mimir-data:/data
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-compactor:
+    image: grafana/mimir:latest
+    command:
+      - "-target=compactor"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - compactor-data:/data/compactor
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-query-frontend:
+    image: grafana/mimir:latest
+    command:
+      - "-target=query-frontend"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - mimir-data:/data
+    depends_on: [ mimir-querier ]
+    # Porta opcional para acessar de fora (Grafana está no mesmo network, não precisa)
+    # ports:
+    #   - "9010:9009"
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-query-scheduler:
+    image: grafana/mimir:latest
+    command:
+      - "-target=query-scheduler"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - mimir-data:/data
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-querier:
+    image: grafana/mimir:latest
+    command:
+      - "-target=querier"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - mimir-data:/data
+    depends_on: [ minio, minio-init, mimir-store-gateway ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  mimir-ruler:
+    image: grafana/mimir:latest
+    command:
+      - "-target=ruler"
+      - "-config.file=/etc/mimir/mimir.yaml"
+    volumes:
+      - ./mimir:/etc/mimir:ro
+      - mimir-data:/data
+    depends_on: [ minio, minio-init ]
+    restart: unless-stopped
+    networks: [ monitoring-network ]
+
+  # ===== GRAFANA ALLOY (scrape -> remote_write para o Distributor) =====
   alloy:
     image: grafana/alloy:latest
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy", "/etc/alloy/config.alloy"]
@@ -82,15 +178,14 @@ services:
       - alloy-data:/var/lib/alloy
     environment:
       TENANT_ID: "tenant-local"
-      RW_URL: "http://mimir:9009/api/v1/push"
+      RW_URL: "http://mimir-distributor:9009/api/v1/push"
     ports:
       - "12345:12345"
     depends_on:
       - oracle_exporter
-      - mimir
+      - mimir-distributor
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
   # ===== GRAFANA =====
   grafana:
@@ -104,15 +199,17 @@ services:
     volumes:
       - ./provisioning/datasources:/etc/grafana/provisioning/datasources:ro
     depends_on:
-      - mimir
+      - mimir-query-frontend
     restart: unless-stopped
-    networks:
-      - monitoring-network
+    networks: [ monitoring-network ]
 
 volumes:
-  mimir-data:
-  alloy-data:
   minio-data:
+  mimir-data:
+  ingester-wal-1:
+  ingester-wal-2:
+  compactor-data:
+  alloy-data:
 
 networks:
   monitoring-network:
