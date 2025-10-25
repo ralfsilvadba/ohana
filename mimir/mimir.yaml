@@ -6,6 +6,11 @@ usage_stats:
 server:
   http_listen_port: 9009
 
+# (Opcional, mas útil) caminho local para dados temporários/TSDB-sync/WAL
+common:
+  path_prefix: /data
+
+# Armazenamento de blocos de séries temporais (S3/MinIO)
 blocks_storage:
   backend: s3
   s3:
@@ -19,25 +24,57 @@ blocks_storage:
   tsdb:
     dir: /data/tsdb
 
+# Ring/descoberta via gossip (todos os processos usam o mesmo cluster)
+memberlist:
+  join_members:
+    - mimir-distributor
+    - mimir-ingester-1
+    - mimir-ingester-2
+    - mimir-store-gateway
+    - mimir-compactor
+    - mimir-query-frontend
+    - mimir-query-scheduler
+    - mimir-querier
+    - mimir-ruler
+  abort_if_cluster_join_fails: false
+  dead_node_reclaim_time: 30m
+
+distributor:
+  ring:
+    kvstore:
+      store: memberlist
+
+ingester:
+  ring:
+    replication_factor: 2   # 2 ingesters no compose abaixo
+    kvstore:
+      store: memberlist
+  wal:
+    enabled: true
+    dir: /data/ingester-wal
+
+store_gateway:
+  sharding_enabled: true
+  sharding_ring:
+    kvstore:
+      store: memberlist
+
 compactor:
   data_dir: /data/compactor
   sharding_ring:
     kvstore:
       store: memberlist
 
-distributor:
+# Regras/alertas
+ruler:
+  rule_path: /data/rules
   ring:
-    instance_addr: 127.0.0.1
     kvstore:
       store: memberlist
+  # Se tiver Alertmanager depois, aponte aqui:
+  # alertmanager_url: http://alertmanager:9093
 
-ingester:
-  ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: memberlist
-    replication_factor: 1
-
+# Armazenamento das rules (S3/MinIO)
 ruler_storage:
   backend: s3
   s3:
@@ -47,10 +84,19 @@ ruler_storage:
     secret_access_key: admin12345
     insecure: true
 
-store_gateway:
-  sharding_ring:
-    replication_factor: 1
+# Pipeline de leitura (queries)
+query_scheduler:
+  ring:
+    kvstore:
+      store: memberlist
+
+query_frontend:
+  downstream_url: mimir-querier:9009
+  scheduler_address: mimir-query-scheduler:9009
 
 limits:
   ingestion_rate: 1000000
   ingestion_burst_size: 2000000
+  # para testes locais sem limites duros:
+  max_global_series_per_user: 0
+  max_series_per_metric: 0
