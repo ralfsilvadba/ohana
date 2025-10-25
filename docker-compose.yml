@@ -93,7 +93,7 @@ services:
       - alloy-data:/var/lib/alloy
     environment:
       TENANT_ID: "tenant-local"
-      RW_URL: "http://mimir-gw:8080/api/v1/push"
+      RW_URL: "http://tenant-local.mimir.local:8080/api/v1/push"
     ports:
       - "12345:12345"
     depends_on:
