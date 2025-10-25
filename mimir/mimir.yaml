@@ -6,11 +6,7 @@ usage_stats:
 server:
   http_listen_port: 9009
 
-# (Opcional, mas útil) caminho local para dados temporários/TSDB-sync/WAL
-common:
-  path_prefix: /data
-
-# Armazenamento de blocos de séries temporais (S3/MinIO)
+# Storage (MinIO/S3)
 blocks_storage:
   backend: s3
   s3:
@@ -24,7 +20,7 @@ blocks_storage:
   tsdb:
     dir: /data/tsdb
 
-# Ring/descoberta via gossip (todos os processos usam o mesmo cluster)
+# Gossip/rings (todos os componentes)
 memberlist:
   join_members:
     - mimir-distributor
@@ -32,9 +28,9 @@ memberlist:
     - mimir-ingester-2
     - mimir-store-gateway
     - mimir-compactor
+    - mimir-querier
     - mimir-query-frontend
     - mimir-query-scheduler
-    - mimir-querier
     - mimir-ruler
   abort_if_cluster_join_fails: false
   dead_node_reclaim_time: 30m
@@ -46,12 +42,9 @@ distributor:
 
 ingester:
   ring:
-    replication_factor: 2   # 2 ingesters no compose abaixo
+    replication_factor: 2
     kvstore:
       store: memberlist
-  wal:
-    enabled: true
-    dir: /data/ingester-wal
 
 store_gateway:
   sharding_enabled: true
@@ -65,16 +58,14 @@ compactor:
     kvstore:
       store: memberlist
 
-# Regras/alertas
+# Ruler (aponta Alertmanager quando tiver)
 ruler:
   rule_path: /data/rules
   ring:
     kvstore:
       store: memberlist
-  # Se tiver Alertmanager depois, aponte aqui:
   # alertmanager_url: http://alertmanager:9093
 
-# Armazenamento das rules (S3/MinIO)
 ruler_storage:
   backend: s3
   s3:
@@ -84,7 +75,7 @@ ruler_storage:
     secret_access_key: admin12345
     insecure: true
 
-# Pipeline de leitura (queries)
+# Pipeline de leitura com agendador + frontend
 query_scheduler:
   ring:
     kvstore:
@@ -97,6 +88,3 @@ query_frontend:
 limits:
   ingestion_rate: 1000000
   ingestion_burst_size: 2000000
-  # para testes locais sem limites duros:
-  max_global_series_per_user: 0
-  max_series_per_metric: 0
