@@ -91,7 +91,7 @@ query_scheduler:
       store: memberlist
 
 query_frontend:
-  downstream_url: mimir-querier:9009
+  downstream_url: http://mimir-querier:9009
   scheduler_address: mimir-query-scheduler:9009
 
 limits:
