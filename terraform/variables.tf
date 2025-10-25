@@ -51,3 +51,20 @@ variable "allowed_http_cidr" {
   type        = string
   default     = "0.0.0.0/0"
 }
+
+variable "instance_type" {
+  description = "Tipo da instância EC2"
+  type        = string
+  default     = "t3.small" # pode usar t3.micro para começar
+}
+
+variable "key_name" {
+  description = "Nome do Key Pair existente na região"
+  type        = string
+}
+
+variable "root_volume_gb" {
+  description = "Tamanho do volume raiz (GB)"
+  type        = number
+  default     = 30
+}
