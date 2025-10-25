@@ -21,3 +21,15 @@ output "security_group_id" {
 output "elastic_ip" {
   value = aws_eip.eip_ohana.public_ip
 }
+
+output "ec2_id" {
+  value = aws_instance.ohana_ec2.id
+}
+
+output "ec2_public_ip" {
+  value = aws_eip.eip_ohana.public_ip
+}
+
+output "ec2_public_dns" {
+  value = aws_instance.ohana_ec2.public_dns
+}
