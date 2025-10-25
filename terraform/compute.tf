@@ -63,28 +63,24 @@ resource "aws_instance" "ohana_ec2" {
     #!/bin/bash
     set -eux
 
-    # Atualiza pacotes
+  # Atualiza pacotes
     dnf -y update || true
 
-    # Instala Docker e Compose plugin
-    dnf -y install docker docker-compose-plugin
-
-    # Habilita e inicia Docker
+  # Instala Docker Engine
+    dnf -y install docker
     systemctl enable --now docker
-
-    # Permite 'ec2-user' usar docker sem sudo
     usermod -aG docker ec2-user
 
+  # Instala Compose v2
+    dnf -y install docker-compose-plugin || true
+    if ! command -v docker-compose &> /dev/null; then
+      curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+      chmod +x /usr/local/bin/docker-compose
+    fi
+
     # Pasta do projeto
-    mkdir -p /opt/ohana/provisioning/datasources
-    mkdir -p /opt/ohana/mimir
-    mkdir -p /opt/ohana/{minio-data,oracle-data,alloy-data,mimir-data}
+    mkdir -p /opt/ohana/{provisioning,datasources,mimir,oracle-data,minio-data,alloy-data,mimir-data}
     chown -R ec2-user:ec2-user /opt/ohana
-
-    # Dica: copie/edite seu docker-compose.yml depois em /opt/ohana
-    # Ex.: scp -i sua-chave.pem docker-compose.yml ec2-user@$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):/opt/ohana/
-
-    # (Opcional) Abrir porta do firewalld local – SG já controla, então mantemos padrão
   EOF
 
   tags = {
