@@ -80,7 +80,7 @@ resource "aws_route_table_association" "public_assoc" {
 # ----------------------
 resource "aws_security_group" "sg_ohana" {
   name        = "${var.name_prefix}-sg"
-  description = "Acesso público básico para ohana (SSH/HTTP/HTTPS/Grafana)"
+  description = "Acesso publico basico"
   vpc_id      = aws_vpc.ohana.id
 
   # SSH somente do seu IP (ou bloco configurado)
