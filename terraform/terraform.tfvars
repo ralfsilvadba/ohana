@@ -5,3 +5,4 @@ vpc_cidr           = "10.80.0.0/16"
 public_subnet_cidr = "10.80.10.0/24"
 ssh_cidr           = "187.183.60.107/32"
 grafana_open       = true
+key_name = "ec2"
